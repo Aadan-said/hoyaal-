@@ -1,14 +1,22 @@
+import { useI18n } from '@/api/i18n';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTrackView } from '@/hooks/useAnalytics';
+import { useFavorites } from '@/hooks/useFavorites';
 import { usePropertyDetails } from '@/hooks/useProperties';
+import { useAddReview, usePropertyReviews } from '@/hooks/useReviews';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { ActivityIndicator, Dimensions, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import MapView, { Marker } from 'react-native-maps';
+
+
+import { ActivityIndicator, Dimensions, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
@@ -20,8 +28,43 @@ export default function ListingDetailScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
 
-    const { user } = useAuthStore();
+    const { user, isAuthenticated } = useAuthStore();
     const { data: property, isLoading, isError } = usePropertyDetails(id as string);
+    const { favorites, toggleFavorite, isToggling } = useFavorites();
+    const { mutate: trackView } = useTrackView();
+    const { data: reviews } = usePropertyReviews(id as string);
+    const addReview = useAddReview();
+    const { t } = useI18n();
+
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState('');
+    const [showReviewForm, setShowReviewForm] = useState(false);
+
+    useEffect(() => {
+        if (id && user) {
+            trackView({ propertyId: id as string, userId: user.id });
+        }
+    }, [id, user]);
+
+    const isFavorite = favorites.includes(id as string);
+
+    const handleAddReview = async () => {
+        if (!comment) return;
+        try {
+            await addReview.mutateAsync({
+                propertyId: id as string,
+                reviewerId: user?.id || '',
+                rating,
+                comment
+            });
+            setComment('');
+            setShowReviewForm(false);
+        } catch (error) {
+            console.error("Failed to add review", error);
+        }
+    };
+
+
 
     const handleCall = () => {
         if (property) {
@@ -47,7 +90,8 @@ export default function ListingDetailScreen() {
         );
     }
 
-    const isOwner = user?.id === property.owner.name; // Simple mock check
+    const isOwner = user?.id === property?.owner?.id;
+
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -64,10 +108,17 @@ export default function ListingDetailScreen() {
                     <Ionicons name="chevron-back" size={24} color="#000" />
                 </TouchableOpacity>
                 <TouchableOpacity
+                    onPress={() => property && toggleFavorite(property.id)}
+                    disabled={isToggling}
                     style={[styles.circleBtn, { backgroundColor: 'rgba(255,255,255,0.9)' }]}
                 >
-                    <Ionicons name="heart-outline" size={24} color="#000" />
+                    <Ionicons
+                        name={isFavorite ? "heart" : "heart-outline"}
+                        size={24}
+                        color={isFavorite ? "#EF4444" : "#000"}
+                    />
                 </TouchableOpacity>
+
             </View>
 
             <ScrollView
@@ -148,12 +199,97 @@ export default function ListingDetailScreen() {
                     </View>
 
                     <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: theme.text }]}>Location</Text>
-                        <View style={[styles.mapPlaceholder, { backgroundColor: theme.inputBackground }]}>
-                            <Ionicons name="map-outline" size={40} color={theme.textSecondary} />
-                            <Text style={[styles.mapText, { color: theme.textSecondary }]}>Mogadishu Map Preview</Text>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('location')}</Text>
+                        <View style={[styles.mapContainer, { borderColor: theme.border }]}>
+                            <MapView
+                                style={styles.map}
+                                initialRegion={{
+                                    latitude: property.latitude || 2.0469,
+                                    longitude: property.longitude || 45.3182,
+                                    latitudeDelta: 0.01,
+                                    longitudeDelta: 0.01,
+                                }}
+                                scrollEnabled={false}
+                                zoomEnabled={false}
+                            >
+                                <Marker
+                                    coordinate={{
+                                        latitude: property.latitude || 2.0469,
+                                        longitude: property.longitude || 45.3182
+                                    }}
+                                />
+                            </MapView>
                         </View>
                     </View>
+
+                    {/* Reviews Section */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('reviews')}</Text>
+                            {!isOwner && (
+                                <TouchableOpacity onPress={() => setShowReviewForm(!showReviewForm)}>
+                                    <Text style={{ color: theme.primary, fontWeight: '700' }}>
+                                        {showReviewForm ? 'Cancel' : 'Write a Review'}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {showReviewForm && (
+                            <View style={[styles.reviewForm, { backgroundColor: theme.inputBackground }]}>
+                                <View style={styles.ratingPicker}>
+                                    {[1, 2, 3, 4, 5].map(s => (
+                                        <TouchableOpacity key={s} onPress={() => setRating(s)}>
+                                            <Ionicons
+                                                name={s <= rating ? "star" : "star-outline"}
+                                                size={32}
+                                                color={s <= rating ? "#F59E0B" : theme.textSecondary}
+                                            />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <TextInput
+                                    style={[styles.reviewInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                                    placeholder="Share your experience..."
+                                    placeholderTextColor={theme.textSecondary}
+                                    multiline
+                                    value={comment}
+                                    onChangeText={setComment}
+                                />
+                                <Button
+                                    title="Submit Review"
+                                    onPress={handleAddReview}
+                                    isLoading={addReview.isPending}
+                                    style={{ marginTop: 12 }}
+                                />
+
+                            </View>
+                        )}
+
+                        {reviews && reviews.length > 0 ? (
+                            reviews.map((rev: any) => (
+                                <View key={rev.id} style={styles.reviewItem}>
+                                    <View style={styles.reviewHeader}>
+                                        <Text style={[styles.reviewerName, { color: theme.text }]}>{rev.reviewer?.full_name}</Text>
+                                        <View style={styles.ratingRow}>
+                                            {[...Array(5)].map((_, i) => (
+                                                <Ionicons
+                                                    key={i}
+                                                    name={i < rev.rating ? "star" : "star-outline"}
+                                                    size={12}
+                                                    color="#F59E0B"
+                                                />
+                                            ))}
+                                        </View>
+                                    </View>
+                                    <Text style={[styles.reviewComment, { color: theme.textSecondary }]}>{rev.comment}</Text>
+                                </View>
+                            ))
+                        ) : (
+                            <Text style={{ color: theme.textSecondary, fontStyle: 'italic' }}>No reviews yet.</Text>
+                        )}
+                    </View>
+
                 </View>
             </ScrollView>
 
@@ -181,20 +317,34 @@ export default function ListingDetailScreen() {
                     {isOwner ? (
                         <Button
                             title="Manage"
-                            onPress={() => { }}
+                            onPress={() => router.push(`/post-property?edit=${property.id}`)}
                             size="md"
                             icon="create-outline"
                             style={{ paddingHorizontal: 20 }}
                         />
                     ) : (
-                        <Button
-                            title="Contact"
-                            onPress={handleCall}
-                            size="md"
-                            icon="call"
-                            style={{ paddingHorizontal: 20 }}
-                        />
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity
+                                onPress={() => router.push({
+                                    pathname: '/(tabs)/messages',
+                                    params: { propertyId: property.id, ownerId: property.owner.id }
+                                })}
+                                style={[styles.chatBtn, { backgroundColor: theme.primaryLight }]}
+                            >
+
+                                <Ionicons name="chatbubble-ellipses" size={20} color={theme.primary} />
+                                <Text style={[styles.chatBtnText, { color: theme.primary }]}>Chat</Text>
+                            </TouchableOpacity>
+                            <Button
+                                title="Call"
+                                onPress={handleCall}
+                                size="md"
+                                icon="call"
+                                style={{ flex: 1 }}
+                            />
+                        </View>
                     )}
+
                 </View>
             </View>
         </View>
@@ -427,4 +577,79 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        flex: 1,
+        marginLeft: 8,
+    },
+    chatBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 14,
+        gap: 8,
+    },
+    chatBtnText: {
+        fontWeight: '700',
+        fontSize: 15,
+    },
+    mapContainer: {
+        height: 200,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        marginTop: 8,
+    },
+    map: {
+        flex: 1,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    reviewForm: {
+        padding: 16,
+        borderRadius: 20,
+        marginBottom: 24,
+    },
+    ratingPicker: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 16,
+        justifyContent: 'center',
+    },
+    reviewInput: {
+        height: 100,
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        textAlignVertical: 'top',
+        fontSize: 15,
+    },
+    reviewItem: {
+        marginBottom: 20,
+        paddingBottom: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f1f5f9',
+    },
+    reviewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    reviewerName: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    reviewComment: {
+        fontSize: 15,
+        lineHeight: 22,
+    }
 });
+
+

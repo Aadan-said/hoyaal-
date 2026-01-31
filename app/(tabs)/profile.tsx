@@ -1,3 +1,4 @@
+import { useI18n } from '@/api/i18n';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -12,13 +13,18 @@ export default function ProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, logout } = useAuthStore();
+    const { language, setLanguage, t } = useI18n();
 
     const handleLogout = async () => {
         await logout();
         router.replace('/(auth)/welcome');
     };
 
-    const MenuItem = ({ icon, label, onPress, isDestructive = false }: { icon: any, label: string, onPress?: () => void, isDestructive?: boolean }) => (
+    const toggleLanguage = () => {
+        setLanguage(language === 'en' ? 'so' : 'en');
+    };
+
+    const MenuItem = ({ icon, label, onPress, isDestructive = false, rightElement }: { icon: any, label: string, onPress?: () => void, isDestructive?: boolean, rightElement?: React.ReactNode }) => (
         <TouchableOpacity style={[styles.menuItem, { backgroundColor: theme.card }]} onPress={onPress} activeOpacity={0.7}>
             <View style={styles.menuIconInfo}>
                 <View style={[styles.iconBox, { backgroundColor: isDestructive ? '#FEE2E2' : theme.inputBackground }]}>
@@ -26,12 +32,11 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={[styles.menuText, { color: isDestructive ? '#DC2626' : theme.text }]}>{label}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            {rightElement ? rightElement : <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />}
         </TouchableOpacity>
     );
 
     if (!user) {
-        // Fallback or loading state
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
                 <Text style={{ color: theme.textSecondary }}>Checking session...</Text>
@@ -51,9 +56,6 @@ export default function ProfileScreen() {
                                     {user.name ? user.name.charAt(0).toUpperCase() : '?'}
                                 </Text>
                             </View>
-                            <TouchableOpacity style={[styles.editBadge, { backgroundColor: theme.text }]}>
-                                <Ionicons name="camera" size={12} color="#FFF" />
-                            </TouchableOpacity>
                         </View>
                         <View style={styles.nameRow}>
                             <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
@@ -66,17 +68,17 @@ export default function ProfileScreen() {
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
                                 <Text style={[styles.statValue, { color: theme.text }]}>0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Listings</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('listings')}</Text>
                             </View>
                             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                             <View style={styles.statItem}>
                                 <Text style={[styles.statValue, { color: theme.text }]}>5.0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rating</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('rating')}</Text>
                             </View>
                             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                             <View style={styles.statItem}>
                                 <Text style={[styles.statValue, { color: theme.text }]}>0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Reviews</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('reviews')}</Text>
                             </View>
                         </View>
                     </View>
@@ -84,11 +86,20 @@ export default function ProfileScreen() {
 
                 {/* Action Menu */}
                 <View style={styles.menuContainer}>
+                    {user.role === 'ADMIN' && (
+                        <>
+                            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Administration</Text>
+                            <View style={styles.menuGroup}>
+                                <MenuItem icon="shield-half-outline" label="Admin Dashboard" onPress={() => router.push('/admin/dashboard')} />
+                            </View>
+                        </>
+                    )}
+
                     {(user.role === 'OWNER' || user.role === 'AGENT') && (
                         <>
-                            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Management</Text>
+                            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('management')}</Text>
                             <View style={styles.menuGroup}>
-                                <MenuItem icon="business-outline" label="My Listings" onPress={() => { }} />
+                                <MenuItem icon="business-outline" label={t('listings')} onPress={() => router.push('/(tabs)/management')} />
                                 <MenuItem icon="stats-chart-outline" label="Performance" onPress={() => { }} />
                             </View>
                         </>
@@ -96,21 +107,29 @@ export default function ProfileScreen() {
 
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Account Settings</Text>
                     <View style={styles.menuGroup}>
-                        <MenuItem icon="person-outline" label="Edit Profile" />
-                        <MenuItem icon="notifications-outline" label="Notifications" />
-                        <MenuItem icon="shield-checkmark-outline" label="Privacy & Security" />
+                        <MenuItem icon="person-outline" label={t('edit_profile')} />
+                        <MenuItem
+                            icon="language-outline"
+                            label={`${t('language')} (${language.toUpperCase()})`}
+                            onPress={toggleLanguage}
+                            rightElement={
+                                <View style={[styles.langBadge, { backgroundColor: theme.primaryLight }]}>
+                                    <Text style={[styles.langText, { color: theme.primary }]}>{language === 'en' ? 'SOM' : 'ENG'}</Text>
+                                </View>
+                            }
+                        />
+                        <MenuItem icon="notifications-outline" label={t('notifications')} onPress={() => router.push('/notifications')} />
+
                     </View>
 
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>App</Text>
                     <View style={styles.menuGroup}>
-                        <MenuItem icon="settings-outline" label="Preferences" />
-                        <MenuItem icon="language-outline" label="Language (Somali)" />
                         <MenuItem icon="help-circle-outline" label="Help & Support" />
                     </View>
 
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Session</Text>
                     <View style={styles.menuGroup}>
-                        <MenuItem icon="log-out-outline" label="Log Out" isDestructive onPress={handleLogout} />
+                        <MenuItem icon="log-out-outline" label={t('logout')} isDestructive onPress={handleLogout} />
                     </View>
                 </View>
 
@@ -263,6 +282,15 @@ const styles = StyleSheet.create({
     menuText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    langBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    langText: {
+        fontSize: 12,
+        fontWeight: '800',
     },
     footer: {
         alignItems: 'center',

@@ -1,10 +1,14 @@
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useAuthStore } from '@/store/useAuthStore';
 import { Property } from '@/types/property';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+
 
 interface PropertyCardProps {
     property: Property;
@@ -15,6 +19,11 @@ export function PropertyCard({ property, onPress }: PropertyCardProps) {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const router = useRouter();
+    const { isAuthenticated } = useAuthStore();
+    const { favorites, toggleFavorite, isToggling } = useFavorites();
+
+    const isFavorite = favorites.includes(property.id);
+
 
     const getVerificationBadge = () => {
         if (property.verification === 'verified') {
@@ -59,8 +68,24 @@ export function PropertyCard({ property, onPress }: PropertyCardProps) {
                         {property.type}
                     </Text>
                 </View>
+
+                {isAuthenticated && (
+                    <TouchableOpacity
+                        style={[styles.favoriteBtn, { backgroundColor: 'rgba(255, 255, 255, 0.9)' }]}
+                        onPress={() => toggleFavorite(property.id)}
+                        disabled={isToggling}
+                    >
+                        <Ionicons
+                            name={isFavorite ? "heart" : "heart-outline"}
+                            size={22}
+                            color={isFavorite ? "#EF4444" : "#6B7280"}
+                        />
+                    </TouchableOpacity>
+                )}
+
                 {getVerificationBadge()}
             </View>
+
 
             <View style={styles.content}>
                 <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
@@ -248,4 +273,20 @@ const styles = StyleSheet.create({
     ratingText: {
         fontSize: 12,
     },
+    favoriteBtn: {
+        position: 'absolute',
+        bottom: 12,
+        right: 12,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
+    }
 });
+

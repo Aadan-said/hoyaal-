@@ -7,11 +7,13 @@ export interface Location {
 }
 
 export interface Owner {
+    id: string;
     name: string;
     phone: string;
     rating: number;
     avatar?: string;
 }
+
 
 export interface Property {
     id: string;
@@ -28,4 +30,7 @@ export interface Property {
     owner: Owner;
     rating?: number;
     description?: string;
+    latitude?: number;
+    longitude?: number;
 }
+

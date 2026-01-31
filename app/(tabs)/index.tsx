@@ -28,7 +28,12 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'Rent' | 'Sale'>('Rent');
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const filteredProperties = properties?.filter(p => p.type === activeTab) || [];
+  const filteredProperties = properties?.filter(p => {
+    const matchTab = p.type === activeTab;
+    const matchCategory = activeCategory === 'All' || p.title.toLowerCase().includes(activeCategory.toLowerCase()) || p.description?.toLowerCase().includes(activeCategory.toLowerCase());
+    return matchTab && matchCategory;
+  }) || [];
+
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
@@ -134,8 +139,8 @@ export default function HomeScreen() {
       {isLoading ? (
         <LoadingSpinner />
       ) : isError ? (
-        <ErrorMessage 
-          message="Waa xalad ah inay xogta la soo gaaro. Fadlan isku day mar kale." 
+        <ErrorMessage
+          message="Waa xalad ah inay xogta la soo gaaro. Fadlan isku day mar kale."
           onRetry={() => refetch()}
           retryText="Mar kale isku day"
         />

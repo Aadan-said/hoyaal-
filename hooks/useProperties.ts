@@ -27,10 +27,13 @@ export function useProperties() {
                 image: p.image_url,
                 verification: p.verification_status,
                 owner: {
+                    id: p.owner?.id,
                     name: p.owner?.full_name,
                     phone: p.owner?.phone,
                     rating: p.owner?.rating
-                }
+                },
+                latitude: p.latitude,
+                longitude: p.longitude
             })) as Property[];
         }
     });
@@ -61,11 +64,14 @@ export function usePropertyDetails(id: string) {
                 image: data.image_url,
                 verification: data.verification_status,
                 owner: {
+                    id: data.owner?.id,
                     name: data.owner?.full_name,
                     phone: data.owner?.phone,
                     rating: data.owner?.rating
                 },
-                description: data.description
+                description: data.description,
+                latitude: data.latitude,
+                longitude: data.longitude
             } as Property;
         },
         enabled: !!id
@@ -95,7 +101,9 @@ export function useCreateProperty() {
                     area: newProperty.area.toString(),
                     image_url: newProperty.image,
                     owner_id: user.id,
-                    verification_status: 'unverified'
+                    verification_status: 'unverified',
+                    latitude: newProperty.latitude,
+                    longitude: newProperty.longitude
                 })
                 .select()
                 .single();

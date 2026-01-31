@@ -7,7 +7,6 @@
     "icon": "./assets/images/splash-icon.png",
     "scheme": "hoyaal",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },

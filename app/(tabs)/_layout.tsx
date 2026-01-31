@@ -93,6 +93,25 @@ export default function TabLayout() {
         />
       )}
 
+      {/* POST/MY LISTINGS - Owners & Agents */}
+      {(role === 'OWNER' || role === 'AGENT' || role === 'ADMIN') && (
+        <Tabs.Screen
+          name="management"
+          options={{
+            title: 'My Properties',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={styles.iconContainer}>
+                <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={28} color={color} />
+                {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
+              </View>
+            ),
+            tabBarLabel: () => null,
+          }}
+        />
+      )}
+
+
+
       {/* MESSAGES - Visible to All */}
       {/* Note: In a real app, you might have index.tsx for messages tab */}
       <Tabs.Screen

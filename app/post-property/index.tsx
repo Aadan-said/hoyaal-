@@ -24,7 +24,7 @@ export default function PostPropertyScreen() {
     React.useEffect(() => {
         if (!canPostProperty()) {
             Alert.alert(
-                'Access Denied', 
+                'Access Denied',
                 'Only Owners, Agents, and Admins can post properties.',
                 [{ text: 'OK', onPress: () => router.back() }]
             );
@@ -38,7 +38,10 @@ export default function PostPropertyScreen() {
     const [area, setArea] = useState('');
     const [city, setCity] = useState('');
     const [district, setDistrict] = useState('');
+    const [bedrooms, setBedrooms] = useState('0');
+    const [bathrooms, setBathrooms] = useState('0');
     const [images, setImages] = useState<string[]>([]);
+
 
     const handlePickImage = () => {
         setImages([...images, 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2070&auto=format&fit=crop']);
@@ -60,14 +63,15 @@ export default function PostPropertyScreen() {
                 location: { city, district },
                 area,
                 image: images[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2073&auto=format&fit=crop',
-                bedrooms: 0,
-                bathrooms: 0,
+                bedrooms: parseInt(bedrooms) || 0,
+                bathrooms: parseInt(bathrooms) || 0,
                 verification: 'unverified',
                 owner: {
                     name: user?.name || '',
                     phone: user?.phone || '',
                     rating: 5.0
                 }
+
             });
 
             Alert.alert('Success', 'Your property listing has been submitted for verification.');
@@ -182,6 +186,34 @@ export default function PostPropertyScreen() {
                             />
                         </View>
                     </View>
+
+                    <View style={styles.row}>
+                        <View style={[styles.section, { flex: 1 }]}>
+                            <InputLabel label="Bedrooms" />
+                            <TextInput
+                                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                                placeholder="3"
+                                placeholderTextColor={theme.textSecondary}
+                                keyboardType="numeric"
+                                value={bedrooms}
+                                onChangeText={setBedrooms}
+                            />
+                        </View>
+                        <View style={{ width: 16 }} />
+                        <View style={[styles.section, { flex: 1 }]}>
+                            <InputLabel label="Bathrooms" />
+                            <TextInput
+                                style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.border, color: theme.text }]}
+                                placeholder="2"
+                                placeholderTextColor={theme.textSecondary}
+                                keyboardType="numeric"
+                                value={bathrooms}
+                                onChangeText={setBathrooms}
+                            />
+                        </View>
+                    </View>
+
+
 
                     {/* Location */}
                     <View style={styles.section}>

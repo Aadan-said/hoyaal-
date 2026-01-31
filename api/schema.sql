@@ -67,3 +67,109 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 5. Create Favorites Table
+CREATE TABLE favorites (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, property_id)
+);
+
+-- 6. Create Chat Rooms Table
+CREATE TABLE chat_rooms (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 7. Create Chat Participants Table
+CREATE TABLE chat_participants (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id UUID REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  UNIQUE(room_id, user_id)
+);
+
+-- 8. Create Messages Table
+CREATE TABLE messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  room_id UUID REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 9. Enable RLS for new tables
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Favorites Policies
+CREATE POLICY "Users can view their own favorites" ON favorites FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own favorites" ON favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own favorites" ON favorites FOR DELETE USING (auth.uid() = user_id);
+
+-- Chat Policies (Basic)
+CREATE POLICY "Participants can view their rooms" ON chat_rooms FOR SELECT USING (
+  EXISTS (SELECT 1 FROM chat_participants WHERE room_id = chat_rooms.id AND user_id = auth.uid())
+);
+CREATE POLICY "Participants can view messages" ON messages FOR SELECT USING (
+  EXISTS (SELECT 1 FROM chat_participants WHERE room_id = messages.room_id AND user_id = auth.uid())
+);
+CREATE POLICY "Participants can insert messages" ON messages FOR INSERT WITH CHECK (
+  auth.uid() = sender_id AND 
+  EXISTS (SELECT 1 FROM chat_participants WHERE room_id = messages.room_id AND user_id = auth.uid())
+);
+
+-- 10. Create Property Views Table (Analytics)
+CREATE TABLE property_views (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  viewer_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 11. Create Reviews Table
+CREATE TABLE reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+  reviewer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(property_id, reviewer_id)
+);
+
+-- 12. Create Notifications Table
+CREATE TABLE notifications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT, -- 'message', 'verification', 'price_drop'
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 13. Enable RLS for Phase 3 tables
+ALTER TABLE property_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Analytics Policies
+CREATE POLICY "Owners can see views of their properties" ON property_views FOR SELECT USING (
+  EXISTS (SELECT 1 FROM properties WHERE id = property_views.property_id AND owner_id = auth.uid())
+);
+CREATE POLICY "Public can insert views" ON property_views FOR INSERT WITH CHECK (true);
+
+-- Reviews Policies
+CREATE POLICY "Reviews are viewable by everyone" ON reviews FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own reviews" ON reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
+
+-- Notifications Policies
+CREATE POLICY "Users can view their own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
+

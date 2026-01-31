@@ -2,19 +2,116 @@ import { Button } from '@/components/ui/Button';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+
+
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { PropertyCard } from '@/components/ui/PropertyCard';
+import { useProperties } from '@/hooks/useProperties';
 
 export default function SearchScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const insets = useSafeAreaInsets();
+
     const [type, setType] = useState<'Rent' | 'Sale'>('Rent');
-    const [bedrooms, setBedrooms] = useState(2);
+    const [bedrooms, setBedrooms] = useState(0);
     const [city, setCity] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
+    const [showResults, setShowResults] = useState(false);
+    const [isMapView, setIsMapView] = useState(false);
+    const router = useRouter();
+
+
+
+    const { data: properties, isLoading } = useProperties();
+
+    const filteredProperties = properties?.filter(p => {
+        const matchType = p.type === type;
+        const matchCity = !city || p.location.city.toLowerCase().includes(city.toLowerCase()) || p.location.district.toLowerCase().includes(city.toLowerCase());
+        const matchMinPrice = !minPrice || p.price >= parseFloat(minPrice);
+        const matchMaxPrice = !maxPrice || p.price <= parseFloat(maxPrice);
+        const matchBedrooms = bedrooms === 0 || p.bedrooms >= bedrooms;
+
+        return matchType && matchCity && matchMinPrice && matchMaxPrice && matchBedrooms;
+    }) || [];
+
+    const resetFilters = () => {
+        setCity('');
+        setMinPrice('');
+        setMaxPrice('');
+        setBedrooms(0);
+        setShowResults(false);
+        setIsMapView(false);
+    };
+
+
+    if (showResults) {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+                <View style={[styles.header, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity onPress={() => setShowResults(false)} style={styles.backBtn}>
+                            <Ionicons name="chevron-back" size={24} color={theme.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.headerTitle, { color: theme.text }]}>Results ({filteredProperties.length})</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                        <TouchableOpacity onPress={() => setIsMapView(!isMapView)}>
+                            <Ionicons name={isMapView ? "list" : "map"} size={24} color={theme.primary} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={resetFilters}>
+                            <Text style={{ color: theme.primary, fontWeight: '600' }}>Reset</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {isMapView ? (
+                    <View style={{ flex: 1 }}>
+                        <MapView
+                            style={StyleSheet.absoluteFillObject}
+                            initialRegion={{
+                                latitude: 2.0469, // Mogadishu
+                                longitude: 45.3182,
+                                latitudeDelta: 0.0922,
+                                longitudeDelta: 0.0421,
+                            }}
+                        >
+                            {filteredProperties.map(p => p.latitude && p.longitude && (
+                                <Marker
+                                    key={p.id}
+                                    coordinate={{ latitude: p.latitude, longitude: p.longitude }}
+                                    title={p.title}
+                                    description={`$${p.price}`}
+                                    onCalloutPress={() => router.push(`/listing/${p.id}`)}
+                                />
+                            ))}
+                        </MapView>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredProperties}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => <PropertyCard property={item} />}
+                        contentContainerStyle={styles.listContent}
+                        ListEmptyComponent={
+                            <View style={styles.empty}>
+                                <Ionicons name="search-outline" size={64} color={theme.textSecondary} />
+                                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No properties match your filters</Text>
+                                <Button title="Adjust Filters" onPress={() => setShowResults(false)} style={{ marginTop: 16 }} />
+                            </View>
+                        }
+                    />
+                )}
+            </SafeAreaView>
+        );
+    }
+
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -96,54 +193,51 @@ export default function SearchScreen() {
 
                     {/* Bedrooms */}
                     <View style={styles.section}>
-                        <Text style={[styles.label, { color: theme.text }]}>Bedrooms</Text>
+                        <Text style={[styles.label, { color: theme.text }]}>Min Bedrooms</Text>
                         <View style={styles.bedroomContainer}>
-                            {[1, 2, 3, 4, '5+'].map((num) => (
-                                <TouchableOpacity
-                                    key={num}
-                                    style={[
-                                        styles.bedroomBtn,
-                                        { borderColor: theme.border, backgroundColor: theme.card },
-                                        bedrooms === (typeof num === 'string' ? 5 : num) && { backgroundColor: theme.primary, borderColor: theme.primary }
-                                    ]}
-                                    onPress={() => setBedrooms(typeof num === 'string' ? 5 : num as number)}
-                                >
-                                    <Text style={[
-                                        styles.bedroomText,
-                                        { color: theme.text },
-                                        bedrooms === (typeof num === 'string' ? 5 : num) && { color: '#FFF', fontWeight: 'bold' }
-                                    ]}>{num}</Text>
-                                </TouchableOpacity>
-                            ))}
+                            {[0, 1, 2, 3, '4+'].map((num) => {
+                                const val = num === '4+' ? 4 : num as number;
+                                return (
+                                    <TouchableOpacity
+                                        key={num}
+                                        style={[
+                                            styles.bedroomBtn,
+                                            { borderColor: theme.border, backgroundColor: theme.card },
+                                            bedrooms === val && { backgroundColor: theme.primary, borderColor: theme.primary }
+                                        ]}
+                                        onPress={() => setBedrooms(val)}
+                                    >
+                                        <Text style={[
+                                            styles.bedroomText,
+                                            { color: theme.text },
+                                            bedrooms === val && { color: '#FFF', fontWeight: 'bold' }
+                                        ]}>{num === 0 ? 'Any' : num}</Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </View>
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Sticky Footer - Now accounts for Tab Bar Height and System Insets */}
             <View style={[styles.footer, {
                 borderTopColor: theme.border,
                 backgroundColor: theme.background,
-                paddingBottom: insets.bottom + 85, // 85 is Tab bar offset
+                paddingBottom: insets.bottom + 85,
                 paddingTop: 16
             }]}>
                 <Button
-                    title={`Search ${type === 'Rent' ? 'Rentals' : 'Properties'}`}
-                    onPress={() => { }}
+                    title={`Show ${filteredProperties.length} Results`}
+                    onPress={() => setShowResults(true)}
                     size="lg"
                     icon="search"
-                    style={{
-                        shadowColor: theme.primary,
-                        shadowOpacity: 0.4,
-                        shadowRadius: 15,
-                        elevation: 10,
-                        height: 58
-                    }}
+                    style={{ height: 58 }}
                 />
             </View>
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: {
@@ -261,4 +355,23 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         borderTopWidth: 1,
     },
+    backBtn: {
+        padding: 4,
+    },
+    listContent: {
+        paddingHorizontal: 24,
+        paddingBottom: 100,
+    },
+    empty: {
+        alignItems: 'center',
+        marginTop: 100,
+        paddingHorizontal: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginTop: 16,
+        textAlign: 'center',
+    }
 });
+

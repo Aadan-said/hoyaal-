@@ -1,20 +1,35 @@
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useChatRooms } from '@/hooks/useChat';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MessagesScreen() {
+    const { propertyId, ownerId } = useLocalSearchParams();
+    const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user } = useAuthStore();
+    const { data: chatRooms, isLoading, refetch } = useChatRooms();
 
-    const mockChats = [
-        { id: '1', name: 'Abdi Ahmed', lastMsg: 'Is the villa still available?', time: '10:30 AM', unread: 2 },
-        { id: '2', name: 'Ismail Ali', lastMsg: 'I have verified your listing.', time: 'Yesterday', unread: 0 },
-    ];
+    // Logic to handle "Start Chat" from ListingDetail
+    useEffect(() => {
+        if (propertyId && ownerId && chatRooms) {
+            const existingRoom = chatRooms.find(r => r.property?.id === propertyId);
+            if (existingRoom) {
+                router.replace({ pathname: '/chat/[id]', params: { id: existingRoom.id } });
+            } else {
+
+                // We would need a mutation to create a room
+                // For now, let's just show an alert or handle it in a better way
+            }
+        }
+    }, [propertyId, ownerId, chatRooms]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -22,41 +37,54 @@ export default function MessagesScreen() {
                 <Text style={[styles.title, { color: theme.text }]}>Messages</Text>
             </View>
 
-            <FlatList
-                data={mockChats}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.list}
-                renderItem={({ item }) => (
-                    <TouchableOpacity style={[styles.chatItem, { borderBottomColor: theme.border }]}>
-                        <View style={[styles.avatar, { backgroundColor: theme.primaryLight }]}>
-                            <Text style={[styles.avatarText, { color: theme.primary }]}>{item.name.charAt(0)}</Text>
-                        </View>
-                        <View style={styles.chatInfo}>
-                            <View style={styles.chatHeader}>
-                                <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
-                                <Text style={[styles.time, { color: theme.textSecondary }]}>{item.time}</Text>
+            {isLoading ? (
+                <LoadingSpinner />
+            ) : (
+                <FlatList
+                    data={chatRooms}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={theme.primary} />
+                    }
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={[styles.chatItem, { borderBottomColor: theme.border }]}
+                            onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.id } })}
+                        >
+
+                            <View style={[styles.avatar, { backgroundColor: theme.primaryLight }]}>
+                                <Text style={[styles.avatarText, { color: theme.primary }]}>
+                                    {item.property?.title?.charAt(0) || '?'}
+                                </Text>
                             </View>
-                            <Text style={[styles.lastMsg, { color: theme.textSecondary }]} numberOfLines={1}>
-                                {item.lastMsg}
-                            </Text>
-                        </View>
-                        {item.unread > 0 && (
-                            <View style={[styles.unreadBadge, { backgroundColor: theme.primary }]}>
-                                <Text style={styles.unreadCount}>{item.unread}</Text>
+                            <View style={styles.chatInfo}>
+                                <View style={styles.chatHeader}>
+                                    <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+                                        {item.property?.title || 'General Chat'}
+                                    </Text>
+                                    <Text style={[styles.time, { color: theme.textSecondary }]}>
+                                        {item.time ? new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                    </Text>
+                                </View>
+                                <Text style={[styles.lastMsg, { color: theme.textSecondary }]} numberOfLines={1}>
+                                    {item.lastMessage}
+                                </Text>
                             </View>
-                        )}
-                    </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={64} color={theme.textSecondary} />
-                        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No messages yet</Text>
-                    </View>
-                }
-            />
+                        </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                        <View style={styles.empty}>
+                            <Ionicons name="chatbubble-ellipses-outline" size={64} color={theme.textSecondary} />
+                            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No messages yet</Text>
+                        </View>
+                    }
+                />
+            )}
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: { flex: 1 },

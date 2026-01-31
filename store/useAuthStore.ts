@@ -12,8 +12,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     register: async (userData: User) => {
-        // In fullstack, 'register' is handled by Supabase Auth + Trigger
-        // But we can manually upsert the profile here if needed
+        // Upsert profile in Supabase
         const { error } = await supabase
             .from('profiles')
             .upsert({
@@ -21,11 +20,14 @@ export const useAuthStore = create<AuthState>((set) => ({
                 full_name: userData.name,
                 phone: userData.phone,
                 role: userData.role,
-            });
+            }, { onConflict: 'id' });
 
         if (error) throw error;
+
+        // Update local state
         set({ user: userData, isAuthenticated: true });
     },
+
 
     logout: async () => {
         await supabase.auth.signOut();
