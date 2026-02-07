@@ -1,8 +1,11 @@
 import { useI18n } from '@/api/i18n';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -13,6 +16,7 @@ export default function ProfileScreen() {
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
     const { user, logout } = useAuthStore();
+    const { data: profile } = useProfile(user?.id || '');
     const { language, setLanguage, t } = useI18n();
 
     const handleLogout = async () => {
@@ -49,13 +53,21 @@ export default function ProfileScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
                 {/* Profile Header */}
                 <View style={[styles.header, { backgroundColor: theme.card }]}>
+                    <LinearGradient
+                        colors={[theme.primaryLight, 'transparent']}
+                        style={styles.headerGradient}
+                    />
                     <View style={styles.headerContent}>
                         <View style={styles.avatarContainer}>
-                            <View style={[styles.avatarImage, { backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }]}>
-                                <Text style={{ color: '#FFF', fontSize: 40, fontWeight: '800' }}>
-                                    {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-                                </Text>
-                            </View>
+                            {user.avatar ? (
+                                <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                            ) : (
+                                <View style={[styles.avatarImage, { backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Text style={{ color: '#FFF', fontSize: 40, fontWeight: '800' }}>
+                                        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                         <View style={styles.nameRow}>
                             <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
@@ -67,18 +79,13 @@ export default function ProfileScreen() {
 
                         <View style={styles.statsRow}>
                             <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: theme.text }]}>0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('listings')}</Text>
+                                <Text style={[styles.statValue, { color: theme.text }]}>${profile?.balance?.toFixed(2) || '0.00'}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Balance</Text>
                             </View>
                             <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
                             <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: theme.text }]}>5.0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('rating')}</Text>
-                            </View>
-                            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-                            <View style={styles.statItem}>
-                                <Text style={[styles.statValue, { color: theme.text }]}>0</Text>
-                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('reviews')}</Text>
+                                <Text style={[styles.statValue, { color: theme.text }]}>{profile?.is_premium ? 'Premium' : 'Standard'}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Status</Text>
                             </View>
                         </View>
                     </View>
@@ -90,16 +97,16 @@ export default function ProfileScreen() {
                         <>
                             <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Administration</Text>
                             <View style={styles.menuGroup}>
-                                <MenuItem icon="shield-half-outline" label="Admin Dashboard" onPress={() => router.push('/admin/dashboard')} />
+                                <MenuItem icon="shield-half-outline" label="Admin Dashboard" onPress={() => router.push('/admin')} />
                             </View>
                         </>
                     )}
 
-                    {(user.role === 'OWNER' || user.role === 'AGENT') && (
+                    {(user.role === 'OWNER') && (
                         <>
                             <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('management')}</Text>
                             <View style={styles.menuGroup}>
-                                <MenuItem icon="business-outline" label={t('listings')} onPress={() => router.push('/(tabs)/management')} />
+                                <MenuItem icon="business-outline" label={t('listings')} onPress={() => router.push('/(tabs)/(owner)/management')} />
                                 <MenuItem icon="stats-chart-outline" label="Performance" onPress={() => { }} />
                             </View>
                         </>
@@ -107,7 +114,7 @@ export default function ProfileScreen() {
 
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Account Settings</Text>
                     <View style={styles.menuGroup}>
-                        <MenuItem icon="person-outline" label={t('edit_profile')} />
+                        <MenuItem icon="person-outline" label={t('edit_profile')} onPress={() => router.push('/(tabs)/(shared)/edit-profile')} />
                         <MenuItem
                             icon="language-outline"
                             label={`${t('language')} (${language.toUpperCase()})`}
@@ -125,6 +132,16 @@ export default function ProfileScreen() {
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>App</Text>
                     <View style={styles.menuGroup}>
                         <MenuItem icon="help-circle-outline" label="Help & Support" />
+                        <MenuItem icon="document-text-outline" label="Terms of Service" onPress={() => router.push('/(shared)/terms')} />
+                        <MenuItem icon="lock-closed-outline" label="Privacy Policy" onPress={() => router.push('/(shared)/privacy')} />
+                    </View>
+
+                    <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Payments</Text>
+                    <View style={styles.menuGroup}>
+                        <MenuItem icon="wallet-outline" label="Lacag Dhalin (Wallet)" onPress={() => router.push('/notifications')} />
+                        {user.role === 'OWNER' && (
+                            <MenuItem icon="ribbon-outline" label="Upgrade Plan" onPress={() => router.push('/(tabs)/(shared)/premium')} />
+                        )}
                     </View>
 
                     <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Session</Text>
@@ -150,13 +167,16 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
         marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 5,
+        overflow: 'hidden',
         paddingBottom: 32,
         paddingTop: 16,
+    },
+    headerGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 200,
     },
     headerContent: {
         alignItems: 'center',

@@ -18,8 +18,8 @@ export default function WelcomeScreen() {
             {/* Background enhancement - In real app, this would be a nice property image */}
             <LinearGradient
                 colors={colorScheme === 'dark'
-                    ? ['#0F172A', '#1E3A8A']
-                    : ['#EFF6FF', '#FFFFFF']}
+                    ? ['#020617', '#1E3A8A', '#020617']
+                    : ['#F8FAFC', '#DBEAFE', '#F8FAFC']}
                 style={StyleSheet.absoluteFill}
             />
 
@@ -40,11 +40,11 @@ export default function WelcomeScreen() {
 
                     <View style={styles.hero}>
                         <Text style={[styles.headline, { color: theme.text }]}>
-                            Find your dream{'\n'}
-                            <Text style={{ color: theme.primary }}>home today</Text>
+                            Hoygaaga Riyada{'\n'}
+                            <Text style={{ color: theme.primary }}>Halkan Ka Hel</Text>
                         </Text>
                         <Text style={[styles.subheadline, { color: theme.textSecondary }]}>
-                            The smartest way to buy, sell, or rent properties in Somalia. Secure, fast, and reliable.
+                            The most trusted platform for buying, selling, and renting properties in Somalia. Secure, fast, and easy.
                         </Text>
                     </View>
 
@@ -57,12 +57,11 @@ export default function WelcomeScreen() {
                             icon="arrow-forward"
                             iconPosition="right"
                         />
-                        <Button
-                            title="Browse as Guest"
-                            variant="secondary"
-                            onPress={() => router.replace('/(tabs)')}
-                            size="lg"
-                        />
+                        <View style={styles.footerInfo}>
+                            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                                Join our community of property buyers and sellers.
+                            </Text>
+                        </View>
                     </View>
                 </View>
             </SafeAreaView>
@@ -147,5 +146,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 8,
+        height: 60,
+    },
+    footerInfo: {
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    footerText: {
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
     }
 });

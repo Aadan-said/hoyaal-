@@ -1,17 +1,20 @@
 import { Button } from '@/components/ui/Button';
+import MapView, { Marker } from '@/components/ui/UniversalMapView';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { Alert, FlatList, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PropertyCard } from '@/components/ui/PropertyCard';
 import { useProperties } from '@/hooks/useProperties';
+import { useLocationStore } from '@/store/useLocationStore';
+import { useSavedSearchStore } from '@/store/useSavedSearchStore';
 
 export default function SearchScreen() {
     const colorScheme = useColorScheme() ?? 'light';
@@ -20,9 +23,11 @@ export default function SearchScreen() {
 
     const [type, setType] = useState<'Rent' | 'Sale'>('Rent');
     const [bedrooms, setBedrooms] = useState(0);
+    const [bathrooms, setBathrooms] = useState(0);
     const [city, setCity] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
+    const [sortBy, setSortBy] = useState<'newest' | 'price_low' | 'price_high' | 'most_viewed'>('newest');
     const [showResults, setShowResults] = useState(false);
     const [isMapView, setIsMapView] = useState(false);
     const router = useRouter();
@@ -33,12 +38,21 @@ export default function SearchScreen() {
 
     const filteredProperties = properties?.filter(p => {
         const matchType = p.type === type;
-        const matchCity = !city || p.location.city.toLowerCase().includes(city.toLowerCase()) || p.location.district.toLowerCase().includes(city.toLowerCase());
+        const matchCity = !city ||
+            p.location.city.toLowerCase().includes(city.toLowerCase()) ||
+            p.location.district.toLowerCase().includes(city.toLowerCase());
         const matchMinPrice = !minPrice || p.price >= parseFloat(minPrice);
         const matchMaxPrice = !maxPrice || p.price <= parseFloat(maxPrice);
         const matchBedrooms = bedrooms === 0 || p.bedrooms >= bedrooms;
+        const matchBathrooms = bathrooms === 0 || p.bathrooms >= bathrooms;
 
-        return matchType && matchCity && matchMinPrice && matchMaxPrice && matchBedrooms;
+        return matchType && matchCity && matchMinPrice && matchMaxPrice && matchBedrooms && matchBathrooms;
+    }).sort((a, b) => {
+        if (sortBy === 'price_low') return a.price - b.price;
+        if (sortBy === 'price_high') return b.price - a.price;
+        if (sortBy === 'most_viewed') return (b.views || 0) - (a.views || 0);
+        // newest is default
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     }) || [];
 
     const resetFilters = () => {
@@ -46,10 +60,32 @@ export default function SearchScreen() {
         setMinPrice('');
         setMaxPrice('');
         setBedrooms(0);
+        setBathrooms(0);
+        setSortBy('newest');
         setShowResults(false);
         setIsMapView(false);
     };
 
+
+    const { location } = useLocationStore();
+
+    // ... inside component
+
+    const { saveSearch } = useSavedSearchStore();
+
+    const handleSaveSearch = () => {
+        saveSearch({
+            title: `${type} in ${city || 'All Cities'}`,
+            filters: {
+                city,
+                type,
+                minPrice: parseFloat(minPrice) || 0,
+                maxPrice: parseFloat(maxPrice) || 0,
+                bedrooms: bedrooms as number
+            }
+        });
+        Alert.alert('Success', 'Search saved! We will notify you when new properties match.');
+    };
 
     if (showResults) {
         return (
@@ -61,7 +97,10 @@ export default function SearchScreen() {
                         </TouchableOpacity>
                         <Text style={[styles.headerTitle, { color: theme.text }]}>Results ({filteredProperties.length})</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        <TouchableOpacity onPress={handleSaveSearch}>
+                            <Ionicons name="bookmark-outline" size={24} color={theme.primary} />
+                        </TouchableOpacity>
                         <TouchableOpacity onPress={() => setIsMapView(!isMapView)}>
                             <Ionicons name={isMapView ? "list" : "map"} size={24} color={theme.primary} />
                         </TouchableOpacity>
@@ -75,9 +114,9 @@ export default function SearchScreen() {
                     <View style={{ flex: 1 }}>
                         <MapView
                             style={StyleSheet.absoluteFillObject}
-                            initialRegion={{
-                                latitude: 2.0469, // Mogadishu
-                                longitude: 45.3182,
+                            region={{
+                                latitude: location?.coords.latitude || 2.0469,
+                                longitude: location?.coords.longitude || 45.3182,
                                 latitudeDelta: 0.0922,
                                 longitudeDelta: 0.0421,
                             }}
@@ -91,7 +130,34 @@ export default function SearchScreen() {
                                     onCalloutPress={() => router.push(`/listing/${p.id}`)}
                                 />
                             ))}
+                            {location && (
+                                <Marker
+                                    coordinate={{
+                                        latitude: location.coords.latitude,
+                                        longitude: location.coords.longitude
+                                    }}
+                                    pinColor="blue"
+                                    title="You are here"
+                                />
+                            )}
                         </MapView>
+                        <TouchableOpacity
+                            style={{
+                                position: 'absolute',
+                                bottom: 20,
+                                right: 20,
+                                backgroundColor: theme.card,
+                                padding: 12,
+                                borderRadius: 30,
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.25,
+                                shadowRadius: 3.84,
+                                elevation: 5,
+                            }}
+                        >
+                            <Ionicons name="locate" size={24} color={theme.primary} />
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     <FlatList
@@ -115,8 +181,12 @@ export default function SearchScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+            <LinearGradient
+                colors={[theme.primaryLight, 'transparent']}
+                style={styles.headerGradient}
+            />
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Search Properties</Text>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Raadi Guryo</Text>
             </View>
 
             <KeyboardAvoidingView
@@ -217,6 +287,60 @@ export default function SearchScreen() {
                             })}
                         </View>
                     </View>
+                    {/* Min Bathrooms */}
+                    <View style={styles.section}>
+                        <Text style={[styles.label, { color: theme.text }]}>Min Bathrooms</Text>
+                        <View style={styles.bedroomContainer}>
+                            {[0, 1, 2, 3, '4+'].map((num) => {
+                                const val = num === '4+' ? 4 : num as number;
+                                return (
+                                    <TouchableOpacity
+                                        key={num}
+                                        style={[
+                                            styles.bedroomBtn,
+                                            { borderColor: theme.border, backgroundColor: theme.card },
+                                            bathrooms === val && { backgroundColor: theme.primary, borderColor: theme.primary }
+                                        ]}
+                                        onPress={() => setBathrooms(val)}
+                                    >
+                                        <Text style={[
+                                            styles.bedroomText,
+                                            { color: theme.text },
+                                            bathrooms === val && { color: '#FFF', fontWeight: 'bold' }
+                                        ]}>{num === 0 ? 'Any' : num}</Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
+                        </View>
+                    </View>
+
+                    {/* Sort By */}
+                    <View style={styles.section}>
+                        <Text style={[styles.label, { color: theme.text }]}>Sort By</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                            {[
+                                { label: 'Newest', value: 'newest' },
+                                { label: 'Price: Low-High', value: 'price_low' },
+                                { label: 'Price: High-Low', value: 'price_high' },
+                                { label: 'Most Viewed', value: 'most_viewed' },
+                            ].map((item) => (
+                                <TouchableOpacity
+                                    key={item.value}
+                                    style={[
+                                        styles.tab,
+                                        sortBy === item.value ? [styles.activeTab, { borderColor: theme.primary }] : { backgroundColor: theme.inputBackground },
+                                        { paddingHorizontal: 20, height: 48, justifyContent: 'center' }
+                                    ]}
+                                    onPress={() => setSortBy(item.value as any)}
+                                >
+                                    <Text style={[
+                                        styles.tabText,
+                                        { color: sortBy === item.value ? theme.primary : theme.textSecondary }
+                                    ]}>{item.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
@@ -247,6 +371,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 16,
         alignItems: 'center',
+    },
+    headerGradient: {
+        position: 'absolute',
+        top: -100,
+        left: -24,
+        right: -24,
+        height: 300,
     },
     headerTitle: {
         fontSize: 24,
@@ -372,6 +503,22 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 16,
         textAlign: 'center',
-    }
+    },
+    tab: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1.5,
+        borderColor: 'transparent',
+    },
+    activeTab: {
+        backgroundColor: '#FFF',
+        borderWidth: 1.5,
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
 });
 

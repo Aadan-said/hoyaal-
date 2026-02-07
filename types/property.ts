@@ -1,5 +1,5 @@
 export type PropertyType = 'Rent' | 'Sale';
-export type VerificationStatus = 'verified' | 'agent' | 'unverified';
+export type VerificationStatus = 'verified' | 'agent' | 'unverified' | 'pending';
 
 export interface Location {
     city: string;
@@ -26,11 +26,17 @@ export interface Property {
     bathrooms: number;
     area: string | number;
     image: string;
+    images?: string[];
     verification: VerificationStatus;
     owner: Owner;
     rating?: number;
     description?: string;
     latitude?: number;
     longitude?: number;
+    views?: number;
+    featured?: boolean;
+    status?: 'available' | 'pending' | 'rented' | 'sold';
+    created_at: string;
+    amenities?: string[];
 }
 

@@ -5,6 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useProperties } from '@/hooks/useProperties';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,8 +22,12 @@ export default function FavoritesScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+            <LinearGradient
+                colors={[theme.primaryLight, 'transparent']}
+                style={styles.headerGradient}
+            />
             <View style={styles.header}>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Saved Properties</Text>
+                <Text style={[styles.headerTitle, { color: theme.text }]}>Guryaha Keydka</Text>
             </View>
 
             {isLoading && favoriteProperties.length === 0 ? (
@@ -63,6 +68,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 20,
         alignItems: 'center',
+    },
+    headerGradient: {
+        position: 'absolute',
+        top: -100,
+        left: -24,
+        right: -24,
+        height: 300,
     },
     headerTitle: {
         fontSize: 24,

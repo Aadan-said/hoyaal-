@@ -2,7 +2,7 @@ import { Colors } from '@/constants/Colors';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export type BadgeType = 'verified' | 'agent' | 'unverified';
+export type BadgeType = 'verified' | 'agent' | 'unverified' | 'pending';
 
 interface BadgeProps {
     type: BadgeType;
@@ -28,6 +28,12 @@ export function Badge({ type }: BadgeProps) {
                     bg: '#FEE2E2', // Light red
                     text: Colors.status.unverified,
                     label: 'Unverified'
+                };
+            case 'pending':
+                return {
+                    bg: '#E2E8F0', // Light gray
+                    text: '#64748B',
+                    label: 'Pending'
                 };
         }
     };

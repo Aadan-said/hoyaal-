@@ -77,13 +77,51 @@ export function useChatMessages(roomId: string) {
     return query;
 }
 
+export function useCreateChatRoom() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ propertyId, ownerId }: { propertyId: string, ownerId: string }) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Auth required");
+
+            // 1. Create the room
+            const { data: room, error: roomError } = await supabase
+                .from('chat_rooms')
+                .insert({ property_id: propertyId })
+                .select()
+                .single();
+
+            if (roomError) throw roomError;
+
+            // 2. Add participants
+            const participants = [
+                { room_id: room.id, user_id: user.id },
+                { room_id: room.id, user_id: ownerId }
+            ];
+
+            const { error: partError } = await supabase
+                .from('chat_participants')
+                .insert(participants);
+
+            if (partError) throw partError;
+
+            return room;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['chat_rooms'] });
+        }
+    });
+}
+
 export function useCreateMessage() {
     return useMutation({
         mutationFn: async ({ roomId, content }: { roomId: string, content: string }) => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Auth required");
 
-            const { error } = await supabase
+            // 1. Send the message
+            const { error: msgError } = await supabase
                 .from('messages')
                 .insert({
                     room_id: roomId,
@@ -91,7 +129,26 @@ export function useCreateMessage() {
                     content
                 });
 
-            if (error) throw error;
+            if (msgError) throw msgError;
+
+            // 2. Fetch other participants to notify them
+            const { data: participants } = await supabase
+                .from('chat_participants')
+                .select('user_id')
+                .eq('room_id', roomId)
+                .neq('user_id', user.id);
+
+            // 3. Trigger notifications for others
+            if (participants && participants.length > 0) {
+                const notifications = participants.map(p => ({
+                    user_id: p.user_id,
+                    title: 'Fariin Cusub',
+                    message: content.length > 50 ? content.substring(0, 50) + '...' : content,
+                    type: 'message'
+                }));
+
+                await supabase.from('notifications').insert(notifications);
+            }
         }
     });
 }

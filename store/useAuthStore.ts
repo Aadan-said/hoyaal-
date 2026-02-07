@@ -43,6 +43,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             supabase.from('profiles').update({
                 full_name: newUser.name,
                 role: newUser.role,
+                avatar_url: newUser.avatar,
             }).eq('id', state.user.id).then();
 
             return { user: newUser };
@@ -71,6 +72,7 @@ export const initializeAuth = async () => {
                     name: profile.full_name,
                     phone: profile.phone,
                     role: profile.role,
+                    avatar: profile.avatar_url,
                 },
                 isAuthenticated: true
             });
@@ -94,6 +96,7 @@ export const initializeAuth = async () => {
                         name: profile.full_name,
                         phone: profile.phone,
                         role: profile.role,
+                        avatar: profile.avatar_url,
                     },
                     isAuthenticated: true
                 });

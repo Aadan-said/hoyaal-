@@ -3,11 +3,16 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PropertyCard } from '@/components/ui/PropertyCard';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useProperties } from '@/hooks/useProperties';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useLocationStore } from '@/store/useLocationStore';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CATEGORIES = [
@@ -23,48 +28,98 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { user } = useAuthStore();
+  const { location, address, requestLocation, isLoading: isLocationLoading, errorMsg } = useLocationStore();
+  const router = useRouter();
+  const role = user?.role || 'SEEKER';
+
+  useEffect(() => {
+    requestLocation();
+  }, []);
   const { data: properties, isLoading, isError, refetch } = useProperties();
+  const { data: notifications } = useNotifications(user?.id || '');
+  const unreadNotifications = notifications?.filter(n => !n.is_read).length || 0;
 
   const [activeTab, setActiveTab] = useState<'Rent' | 'Sale'>('Rent');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredProperties = properties?.filter(p => {
     const matchTab = p.type === activeTab;
     const matchCategory = activeCategory === 'All' || p.title.toLowerCase().includes(activeCategory.toLowerCase()) || p.description?.toLowerCase().includes(activeCategory.toLowerCase());
-    return matchTab && matchCategory;
+    const matchSearch = !searchQuery ||
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.location.district.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // For Seekers, only show verified/agent properties (or based on app requirement)
+    // For now, let's keep it simple but functional
+    return matchTab && matchCategory && matchSearch;
   }) || [];
 
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
+      <LinearGradient
+        colors={[theme.primaryLight, 'transparent']}
+        style={styles.headerGradient}
+      />
+
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <View>
+        <View style={styles.userSection}>
           <Text style={[styles.greeting, { color: theme.textSecondary }]}>
-            {user ? `Fikir Wacan, ${user.name.split(' ')[0]}` : 'Current Location'}
+            {user ? 'Kusoo dhawaow,' : 'Current Location'}
           </Text>
-          <TouchableOpacity style={styles.locationSelector}>
-            <Ionicons name="location" size={20} color={theme.primary} />
-            <Text style={[styles.locationText, { color: theme.text }]}>Mogadishu, Somalia</Text>
-            <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+          <View style={styles.userInfoRow}>
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {user ? user.name : (address?.city || 'Somalia')}
+            </Text>
+            <TouchableOpacity style={styles.locationBadge} onPress={requestLocation}>
+              <Ionicons name="location" size={14} color={theme.primary} />
+              <Text style={[styles.locationBadgeText, { color: theme.primary }]}>
+                {address ? `${address.district || address.city}` : isLocationLoading ? 'Locating...' : 'Muqdisho'}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.topActions}>
+          <TouchableOpacity
+            style={[styles.profileBtn, { borderColor: theme.border, backgroundColor: theme.card, marginRight: 12 }]}
+            onPress={() => router.push('/notifications')}
+          >
+            <Ionicons name="notifications-outline" size={24} color={theme.text} />
+            {unreadNotifications > 0 && (
+              <View style={[styles.notificationBadge, { backgroundColor: '#EF4444' }]}>
+                <Text style={styles.badgeText}>{unreadNotifications}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.profileBtn, { borderColor: theme.border, backgroundColor: theme.card }]}
+            onPress={() => router.push('/(tabs)/(shared)/messages')}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={[styles.profileBtn, { borderColor: theme.border }]}>
-          <View style={[styles.profileImage, { backgroundColor: theme.primary, justifyContent: 'center', alignItems: 'center' }]}>
-            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>{user?.name.charAt(0)}</Text>
-          </View>
-          <View style={styles.notificationBadge} />
-        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
-      <TouchableOpacity style={[styles.searchContainer, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}>
-        <Ionicons name="search" size={22} color={theme.textSecondary} />
-        <Text style={[styles.searchPlaceholder, { color: theme.textSecondary }]}>Search properties, areas...</Text>
-        <View style={[styles.filterBtn, { backgroundColor: theme.primary }]}>
-          <Ionicons name="options-outline" size={20} color="#FFF" />
+      {role !== 'OWNER' && (
+        <View style={[styles.searchContainer, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}>
+          <Ionicons name="search" size={22} color={theme.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.text }]}
+            placeholder="Raadi guryo, degmooyin..."
+            placeholderTextColor={theme.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity style={[styles.filterBtn, { backgroundColor: theme.primary }]}>
+            <Ionicons name="options-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      )}
 
       {/* Buy/Rent Toggle */}
       <View style={[styles.toggleContainer, { backgroundColor: theme.inputBackground }]}>
@@ -122,6 +177,46 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
+      {/* Map Widget */}
+      <View style={styles.mapWidgetContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.text, fontSize: 18 }]}>Near You</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.mapPreview}
+          onPress={() => router.push('/(tabs)/(seeker)/search')}
+        >
+          <MapView
+            style={StyleSheet.absoluteFillObject}
+            provider={PROVIDER_DEFAULT}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            region={{
+              latitude: location?.coords.latitude || 2.0469,
+              longitude: location?.coords.longitude || 45.3182,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+          >
+            {filteredProperties.slice(0, 3).map(p => (p.latitude && p.longitude) ? (
+              <Marker
+                key={p.id}
+                coordinate={{ latitude: p.latitude, longitude: p.longitude }}
+              />
+            ) : null)}
+            {location && (
+              <Marker
+                coordinate={{ latitude: location.coords.latitude, longitude: location.coords.longitude }}
+                pinColor="blue"
+              />
+            )}
+          </MapView>
+          <View style={styles.mapOverlay}>
+            <Text style={styles.mapOverlayText}>View on Map</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
       {/* Section Title */}
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -173,6 +268,14 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     marginBottom: 16,
+    paddingTop: 8,
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: -100,
+    left: -24,
+    right: -24,
+    height: 300,
   },
   topBar: {
     flexDirection: 'row',
@@ -180,44 +283,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  greeting: {
-    fontSize: 13,
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  locationSelector: {
+  topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
-  locationText: {
-    fontSize: 18,
+  userSection: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 4,
+  },
+  locationBadgeText: {
+    fontSize: 12,
     fontWeight: '700',
   },
   profileBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
   },
+  profileLetterBg: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   profileImage: {
     width: '100%',
     height: '100%',
   },
+  profileLetter: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
   notificationBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    top: 4,
+    right: 4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -229,10 +369,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 24,
   },
-  searchPlaceholder: {
+  searchInput: {
     flex: 1,
     fontSize: 15,
     marginLeft: 12,
+    fontWeight: '500',
+    height: '100%',
   },
   filterBtn: {
     width: 40,
@@ -339,5 +481,29 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
+  },
+  mapWidgetContainer: {
+    marginBottom: 24,
+  },
+  mapPreview: {
+    height: 120,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    marginTop: 8,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  mapOverlayText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   }
 });

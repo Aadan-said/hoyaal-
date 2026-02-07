@@ -5,14 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
-  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const role = user?.role || 'SEEKER'; // Default to SEEKER if not logged in
+  const role = user?.role || 'SEEKER';
 
   return (
     <Tabs
@@ -20,148 +18,148 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.primary,
         tabBarInactiveTintColor: theme.tabIconDefault,
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
           position: 'absolute',
           bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: theme.background,
+          left: 20,
+          right: 20,
+          backgroundColor: theme.card,
+          borderRadius: 25,
           borderTopWidth: 0,
-          elevation: 20,
+          elevation: 10,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          height: 64 + insets.bottom,
-          paddingBottom: insets.bottom + 8,
-          paddingTop: 12,
-        },
-        tabBarLabelStyle: {
-          display: 'none',
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 4,
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.15,
+          shadowRadius: 20,
+          height: 100,
+          paddingHorizontal: 15,
+          paddingBottom: 0, // Removed padding for centered icons without labels
+          borderWidth: 1,
+          borderColor: theme.border,
         },
       }}>
 
-      {/* HOME - Visible to All */}
+      {/* HOME - Visible to Both */}
       <Tabs.Screen
-        name="index"
+        name="(seeker)/index"
         options={{
-          title: 'Home',
+          href: (role === 'SEEKER' || role === 'OWNER') ? '/(tabs)/(seeker)' : null,
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
-              {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-            </View>
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={32} color={color} />
           ),
-          tabBarLabel: () => null,
         }}
       />
 
-      {/* SEARCH - Visible to SEEKER and OWNER */}
-      {(role === 'SEEKER' || role === 'OWNER') && (
-        <Tabs.Screen
-          name="search"
-          options={{
-            title: 'Search',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Ionicons name={focused ? 'search' : 'search-outline'} size={26} color={color} />
-                {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-              </View>
-            ),
-            tabBarLabel: () => null,
-          }}
-        />
-      )}
-
-      {/* FAVORITES - Seeker only */}
-      {role === 'SEEKER' && (
-        <Tabs.Screen
-          name="favorites"
-          options={{
-            title: 'Favorites',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Ionicons name={focused ? 'heart' : 'heart-outline'} size={26} color={color} />
-                {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-              </View>
-            ),
-            tabBarLabel: () => null,
-          }}
-        />
-      )}
-
-      {/* POST/MY LISTINGS - Owners & Agents */}
-      {(role === 'OWNER' || role === 'AGENT' || role === 'ADMIN') && (
-        <Tabs.Screen
-          name="management"
-          options={{
-            title: 'My Properties',
-            tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Ionicons name={focused ? 'add-circle' : 'add-circle-outline'} size={28} color={color} />
-                {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-              </View>
-            ),
-            tabBarLabel: () => null,
-          }}
-        />
-      )}
-
-
-
-      {/* MESSAGES - Visible to All */}
-      {/* Note: In a real app, you might have index.tsx for messages tab */}
+      {/* SEARCH - Seeker Only */}
       <Tabs.Screen
-        name="messages"
+        name="(seeker)/search"
         options={{
-          href: '/(tabs)/messages', // Placeholder for upcoming screen
-          title: 'Messages',
+          href: role === 'SEEKER' ? '/(tabs)/(seeker)/search' : null,
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={26} color={color} />
-              {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
+            <Ionicons name={focused ? 'search' : 'search-outline'} size={32} color={color} />
+          ),
+        }}
+      />
+
+      {/* FAVORITES - Seeker Only */}
+      <Tabs.Screen
+        name="(seeker)/favorites"
+        options={{
+          href: role === 'SEEKER' ? '/(tabs)/(seeker)/favorites' : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={32} color={color} />
+          ),
+        }}
+      />
+
+      {/* POST PROPERTY - Owner Only (Middle Button) */}
+      <Tabs.Screen
+        name="post"
+        options={{
+          href: role === 'OWNER' ? '/(tabs)/post' : null,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: theme.primary,
+              width: 58,
+              height: 58,
+              borderRadius: 29,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: theme.primary,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.4,
+              shadowRadius: 10,
+              elevation: 8,
+              borderWidth: 4,
+              borderColor: theme.background,
+            }}>
+              <Ionicons name="add" size={32} color="#FFF" />
             </View>
           ),
-          tabBarLabel: () => null,
+        }}
+      />
+
+      {/* MY PROPERTIES - Owner Only */}
+      <Tabs.Screen
+        name="(owner)/management"
+        options={{
+          href: role === 'OWNER' ? '/(tabs)/(owner)/management' : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'business' : 'business-outline'} size={32} color={color} />
+          ),
+        }}
+      />
+
+      {/* ADMIN TAB */}
+      <Tabs.Screen
+        name="(admin)/admin"
+        options={{
+          href: role === 'ADMIN' ? '/(tabs)/(admin)/admin' : null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'shield-checkmark' : 'shield-checkmark-outline'} size={32} color={color} />
+          ),
+        }}
+      />
+
+      {/* MESSAGES - HIDDEN from bottom bar */}
+      <Tabs.Screen
+        name="(shared)/messages"
+        options={{
+          href: null,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={32} color={color} />
+          ),
+        }}
+      />
+
+      {/* PREMIUM - Visible to All */}
+      <Tabs.Screen
+        name="(shared)/premium"
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'card' : 'card-outline'} size={32} color={color} />
+          ),
         }}
       />
 
       {/* PROFILE - Visible to All */}
       <Tabs.Screen
-        name="profile"
+        name="(shared)/profile"
         options={{
-          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={26} color={color} />
-              {focused && <View style={[styles.activeDot, { backgroundColor: color }]} />}
-            </View>
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={32} color={color} />
           ),
-          tabBarLabel: () => null,
         }}
+      />
+
+      {/* HIDDEN SCREENS */}
+      <Tabs.Screen
+        name="(shared)/edit-profile"
+        options={{ href: null }}
       />
     </Tabs>
   );
 }
 
-const styles = StyleSheet.create({
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 48,
-    width: 48,
-  },
-  activeIconContainer: {
-    // Optional scaling
-    // transform: [{ scale: 1.1 }]
-  },
-  activeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 6,
-  }
-});
+const styles = StyleSheet.create({});

@@ -52,13 +52,13 @@ export default function ChatDetailScreen() {
                 {!isMine && (
                     <View style={[styles.miniAvatar, { backgroundColor: theme.primaryLight }]}>
                         <Text style={[styles.miniAvatarText, { color: theme.primary }]}>
-                            {item.sender?.full_name?.charAt(0)}
+                            {item.sender?.full_name?.charAt(0) || '?'}
                         </Text>
                     </View>
                 )}
                 <View style={[
                     styles.messageBubble,
-                    isMine ? [styles.myBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.inputBackground }]
+                    isMine ? [styles.myBubble, { backgroundColor: theme.primary }] : [styles.otherBubble, { backgroundColor: theme.card, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 1 }]
                 ]}>
                     <Text style={[
                         styles.messageText,

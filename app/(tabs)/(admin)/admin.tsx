@@ -3,12 +3,12 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAdminProperties, useUpdatePropertyStatus } from '@/hooks/useAdmin';
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function AdminDashboard() {
+export default function AdminScreen() {
     const router = useRouter();
     const colorScheme = useColorScheme() ?? 'light';
     const theme = Colors[colorScheme];
@@ -39,19 +39,25 @@ export default function AdminDashboard() {
                                 style={[styles.actionBtn, { backgroundColor: Colors.status.verified }]}
                                 onPress={() => handleUpdateStatus(item.id, 'verified')}
                             >
-                                <Ionicons name="checkmark" size={20} color="#FFF" />
-                                <Text style={styles.actionBtnText}>Approve</Text>
+                                <Ionicons name="checkmark" size={18} color="#FFF" />
+                                <Text style={styles.actionBtnText}>Verify</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.actionBtn, { backgroundColor: Colors.status.unverified }]}
                                 onPress={() => handleUpdateStatus(item.id, 'rejected')}
                             >
-                                <Ionicons name="close" size={20} color="#FFF" />
+                                <Ionicons name="close" size={18} color="#FFF" />
                                 <Text style={styles.actionBtnText}>Reject</Text>
                             </TouchableOpacity>
                         </>
                     ) : (
                         <View style={[styles.statusBadge, { backgroundColor: item.verification_status === 'verified' ? theme.primaryLight : '#F3F4F6' }]}>
+                            <Ionicons
+                                name={item.verification_status === 'verified' ? "shield-checkmark" : "close-circle"}
+                                size={14}
+                                color={item.verification_status === 'verified' ? theme.primary : '#6B7280'}
+                                style={{ marginRight: 4 }}
+                            />
                             <Text style={[styles.statusText, { color: item.verification_status === 'verified' ? theme.primary : '#6B7280' }]}>
                                 {item.verification_status.toUpperCase()}
                             </Text>
@@ -64,12 +70,10 @@ export default function AdminDashboard() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-            <Stack.Screen options={{ title: 'Admin Dashboard', headerShown: true }} />
-
             <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>Admin Center</Text>
+                <Text style={[styles.title, { color: theme.text }]}>Admin Panel</Text>
                 <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                    Review and verify property listings
+                    Management & Verification
                 </Text>
             </View>
 
@@ -90,7 +94,7 @@ export default function AdminDashboard() {
                                 <Text style={[styles.statNum, { color: theme.primary }]}>{pendingProperties.length}</Text>
                                 <Text style={[styles.statLabel, { color: theme.primary }]}>Pending</Text>
                             </View>
-                            <View style={[styles.statBox, { backgroundColor: '#F0FDF4' }]}>
+                            <View style={[styles.statBox, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7', borderWidth: 1 }]}>
                                 <Text style={[styles.statNum, { color: '#166534' }]}>{approvedProperties.length}</Text>
                                 <Text style={[styles.statLabel, { color: '#166534' }]}>Verified</Text>
                             </View>
@@ -98,7 +102,7 @@ export default function AdminDashboard() {
                     )}
                     ListEmptyComponent={
                         <View style={styles.empty}>
-                            <Ionicons name="shield-checkmark-outline" size={64} color={theme.textSecondary} />
+                            <Ionicons name="shield-checkmark-outline" size={64} color={theme.border} />
                             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No listings to review</Text>
                         </View>
                     }
@@ -111,22 +115,22 @@ export default function AdminDashboard() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { padding: 24, paddingBottom: 16 },
-    title: { fontSize: 28, fontWeight: '800' },
-    subtitle: { fontSize: 15, marginTop: 4 },
-    list: { paddingHorizontal: 24, paddingBottom: 40 },
+    title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+    subtitle: { fontSize: 15, marginTop: 4, fontWeight: '500' },
+    list: { paddingHorizontal: 24, paddingBottom: 100 },
     statsRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
-    statBox: { flex: 1, padding: 16, borderRadius: 16, alignItems: 'center' },
+    statBox: { flex: 1, padding: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     statNum: { fontSize: 24, fontWeight: '800' },
-    statLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
-    card: { flexDirection: 'row', borderRadius: 16, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
-    cardImage: { width: 100, height: 100 },
+    statLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginTop: 4 },
+    card: { flexDirection: 'row', borderRadius: 20, borderWidth: 1, marginBottom: 16, overflow: 'hidden', height: 110 },
+    cardImage: { width: 110, height: 110 },
     cardContent: { flex: 1, padding: 12, justifyContent: 'center' },
-    cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
-    cardOwner: { fontSize: 13, marginBottom: 12 },
+    cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+    cardOwner: { fontSize: 13, marginBottom: 10 },
     actionRow: { flexDirection: 'row', gap: 8 },
-    actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4 },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 6 },
     actionBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-    statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, flexDirection: 'row', alignItems: 'center' },
     statusText: { fontSize: 11, fontWeight: '800' },
     empty: { alignItems: 'center', marginTop: 100 },
     emptyText: { marginTop: 16, fontSize: 16, fontWeight: '600' }

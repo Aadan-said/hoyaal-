@@ -5,6 +5,7 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { UserRole } from '@/types/auth';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -89,6 +90,12 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+            <LinearGradient
+                colors={colorScheme === 'dark'
+                    ? ['#020617', '#1E3A8A', '#020617']
+                    : ['#F8FAFC', '#DBEAFE', '#F8FAFC']}
+                style={StyleSheet.absoluteFill}
+            />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
@@ -99,8 +106,13 @@ export default function LoginScreen() {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.header}>
-                        <View style={[styles.iconContainer, { backgroundColor: theme.primaryLight }]}>
-                            <Ionicons name="home" size={48} color={theme.primary} />
+                        <View style={[styles.iconContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                            <LinearGradient
+                                colors={[theme.primary, theme.primary]} // Could be a localized gradient
+                                style={styles.iconGradient}
+                            >
+                                <Ionicons name="home" size={40} color="#FFF" />
+                            </LinearGradient>
                         </View>
                         <Text style={[styles.title, { color: theme.text }]}>Welcome to Hoyaal</Text>
                         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -123,12 +135,10 @@ export default function LoginScreen() {
 
                         {/* Role Selection for Testing */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { color: theme.textSecondary }]}>I am a...</Text>
+                            <Text style={[styles.label, { color: theme.textSecondary }]}>Kumaa tahay?</Text>
                             <View style={styles.roleGrid}>
-                                <RoleOption role="SEEKER" label="Seeker" icon="search" />
-                                <RoleOption role="OWNER" label="Owner" icon="business" />
-                                <RoleOption role="AGENT" label="Agent" icon="shield-checkmark" />
-                                <RoleOption role="ADMIN" label="Admin" icon="settings" />
+                                <RoleOption role="SEEKER" label="Kirayste" icon="search" />
+                                <RoleOption role="OWNER" label="Mulkiile" icon="business" />
                             </View>
                         </View>
 
@@ -144,7 +154,7 @@ export default function LoginScreen() {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Input
-                                        placeholder="61 XX XX XXX"
+                                        placeholder="090 XX XX XXX"
                                         keyboardType="phone-pad"
                                         value={phoneNumber}
                                         onChangeText={setPhoneNumber}
@@ -196,17 +206,26 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     iconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 24,
+        width: 88,
+        height: 88,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
+        borderWidth: 1,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 8,
+        shadowRadius: 20,
+        elevation: 10,
+        padding: 4,
+    },
+    iconGradient: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     title: {
         fontSize: 28,
@@ -225,7 +244,7 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     section: {
-        marginBottom: 24,
+        marginBottom: 14,
     },
     roleGrid: {
         flexDirection: 'row',

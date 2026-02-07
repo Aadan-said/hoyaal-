@@ -5,6 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/store/useAuthStore';
 import { UserRole } from '@/types/auth';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -82,13 +83,19 @@ export default function VerifyScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+            <LinearGradient
+                colors={colorScheme === 'dark'
+                    ? ['#020617', '#1E3A8A', '#020617']
+                    : ['#F8FAFC', '#DBEAFE', '#F8FAFC']}
+                style={StyleSheet.absoluteFill}
+            />
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.content}
             >
                 <TouchableOpacity
                     onPress={() => router.back()}
-                    style={styles.backButton}
+                    style={[styles.backButton, { backgroundColor: theme.card, borderColor: theme.border }]}
                 >
                     <Ionicons name="arrow-back" size={24} color={theme.text} />
                 </TouchableOpacity>
@@ -168,13 +175,21 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     backButton: {
-        marginBottom: 24,
-        width: 40,
-        height: 40,
+        marginBottom: 32,
+        width: 48,
+        height: 48,
+        borderRadius: 16,
         justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
     },
     header: {
-        marginBottom: 48,
+        marginBottom: 40,
     },
     title: {
         fontSize: 32,
@@ -192,16 +207,16 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     otpInput: {
-        width: 48,
-        height: 56,
+        width: 52,
+        height: 64,
         borderWidth: 1.5,
-        borderRadius: 12,
-        fontSize: 22,
-        fontWeight: '700',
+        borderRadius: 16,
+        fontSize: 24,
+        fontWeight: '800',
         textAlign: 'center',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
     },
     resendContainer: {
         alignItems: 'center',

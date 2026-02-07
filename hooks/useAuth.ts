@@ -8,29 +8,27 @@ export function useAuth() {
     return user?.role === role;
   };
 
-  const canPostProperty = () => {
-    return user?.role === 'OWNER' || user?.role === 'AGENT' || user?.role === 'ADMIN';
-  };
+
 
   const canManageUsers = () => {
     return user?.role === 'ADMIN';
   };
 
-  const isOwnerOrAgent = () => {
-    return user?.role === 'OWNER' || user?.role === 'AGENT';
-  };
 
   const isSeeker = () => {
     return user?.role === 'SEEKER';
+  };
+
+  const canPostProperty = () => {
+    return user?.role === 'OWNER' || user?.role === 'ADMIN';
   };
 
   return {
     user,
     isAuthenticated,
     hasRole,
-    canPostProperty,
     canManageUsers,
-    isOwnerOrAgent,
     isSeeker,
+    canPostProperty,
   };
 }

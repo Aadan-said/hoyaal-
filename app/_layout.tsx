@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { registerForPushNotificationsAsync, useUpdatePushToken } from '@/hooks/useNotifications';
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const updatePushToken = useUpdatePushToken();
 
   useEffect(() => {
     const init = async () => {
@@ -41,7 +43,16 @@ function RootLayoutNav() {
       router.replace('/(auth)/welcome');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to tabs if already logged in and trying to access auth
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/(seeker)');
+    }
+
+    // Phase 4: Handle Push Token Registration
+    if (isAuthenticated && user?.id) {
+      registerForPushNotificationsAsync().then(token => {
+        if (token) {
+          updatePushToken.mutate({ userId: user.id, token });
+        }
+      });
     }
   }, [isAuthenticated, segments, isReady]);
 
